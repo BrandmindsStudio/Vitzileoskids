@@ -54,7 +54,8 @@ export default function DailyBarChart({ data, days }: Props) {
         {gridLines.map((g) => (
           <g key={g.y}>
             <line x1={0} x2={W} y1={g.y} y2={g.y} stroke="var(--grid)" strokeWidth={1} />
-            <text x={W - 2} y={g.y - 3} textAnchor="end" fontSize={10} fill="var(--ink-muted)">
+            {/* Axis values on the left — recent (usually tallest) bars are on the right. */}
+            <text x={2} y={g.y - 3} textAnchor="start" fontSize={10} fill="var(--ink-muted)">
               {fmtEur(g.value)}
             </text>
           </g>
@@ -87,10 +88,11 @@ export default function DailyBarChart({ data, days }: Props) {
                   pointerEvents="none"
                 />
               )}
-              {/* selective direct label: only the max day */}
-              {i === maxIdx && s.total > 0 && active === null && (
+              {/* selective direct label: only the max day; clamped so it never
+                  leaves the plot or collides with the left-side axis labels */}
+              {i === maxIdx && s.total > 0 && active === null && x + barW / 2 > 70 && (
                 <text
-                  x={x + barW / 2}
+                  x={Math.min(x + barW / 2, W - 34)}
                   y={y - 5}
                   textAnchor="middle"
                   fontSize={10}
