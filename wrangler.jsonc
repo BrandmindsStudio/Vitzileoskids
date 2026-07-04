@@ -1,0 +1,34 @@
+{
+  // Vitzileos Kids — Z-Report dashboard
+  // One Worker: Hono API (/api/*) + static assets (React SPA)
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vitzileos-zreport",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vitzileos-zreport",
+      // Replace with the id printed by `wrangler d1 create vitzileos-zreport`
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "vitzileos-zreport-photos"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+  // Secrets (set via `wrangler secret put`):
+  //   ANTHROPIC_API_KEY — Claude API key for extraction
+}

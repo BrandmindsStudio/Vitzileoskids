@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Chart + chrome tokens (validated reference palette, light theme). */
+:root {
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --series-1: #2a78d6; /* blue — primary series / cash */
+  --series-2: #1baf7a; /* aqua — card */
+  --delta-up: #006300;
+  --delta-down: #d03b3b;
+  --warning: #fab219;
+}
+
+html,
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}

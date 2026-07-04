@@ -1,0 +1,26 @@
+{
+  "business_date": "2026-07-03",
+  "z_time": "21:04",
+  "z_number": 908,
+  "gross_total": 840.9,
+  "receipt_count": 19,
+  "cash_total": 86.4,
+  "card_total": 754.5,
+  "discounts_total": 0.0,
+  "cancelled_total": 235.0,
+  "cancelled_count": 2,
+  "register_serial": "DSN 23004085",
+  "aade_transmitted": true,
+  "vat_lines": [
+    { "vat_label": "Α", "vat_rate": 6, "gross_amount": 0, "net_amount": 0, "vat_amount": 0 },
+    { "vat_label": "Β", "vat_rate": 13, "gross_amount": 0, "net_amount": 0, "vat_amount": 0 },
+    { "vat_label": "Γ", "vat_rate": 24, "gross_amount": 840.9, "net_amount": 678.15, "vat_amount": 162.75 },
+    { "vat_label": "Δ", "vat_rate": 36, "gross_amount": 0, "net_amount": 0, "vat_amount": 0 },
+    { "vat_label": "Ε", "vat_rate": 0, "gross_amount": 0, "net_amount": null, "vat_amount": null }
+  ],
+  "departments": [
+    { "name": "ΕΝΔΥΣΗ", "amount": 476.55, "items": 11 },
+    { "name": "ΥΠΟΔΗΣΗ", "amount": 312.95, "items": 3 },
+    { "name": "E-SHOP", "amount": 51.4, "items": 3 }
+  ]
+}
