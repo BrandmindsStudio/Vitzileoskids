@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { fmtEur } from "../format";
 import type { LookupResult, PaymentMethod, Product, ProductDetail, SaleType, SalesDay } from "../../shared/types";
@@ -125,7 +126,12 @@ export default function Pos() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Ταμείο</h2>
+        <h2 className="text-xl font-bold">
+          Ταμείο{" "}
+          <Link to="/sales" className="align-middle text-xs font-semibold text-[var(--series-1)]">
+            Ιστορικό →
+          </Link>
+        </h2>
         <div className="flex overflow-hidden rounded-lg ring-1 ring-black/10">
           {(["sale", "return"] as const).map((m) => (
             <button

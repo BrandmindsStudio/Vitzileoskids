@@ -9,6 +9,7 @@ import Manual from "./pages/Manual";
 import Reports from "./pages/Reports";
 import ReportDetail from "./pages/ReportDetail";
 import Pos from "./pages/Pos";
+import SalesHistory from "./pages/SalesHistory";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import ProductNew from "./pages/ProductNew";
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/reports/:id" element={<ReportDetail />} />
           <Route path="/pos" element={<Pos />} />
+          <Route path="/sales" element={<SalesHistory />} />
           <Route path="/products" element={<Products />} />
           <Route path="/products/new" element={<ProductNew />} />
           <Route path="/products/:id" element={<ProductDetail />} />

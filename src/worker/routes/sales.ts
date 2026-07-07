@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../env";
-import { athensToday } from "../dates";
-import type { Sale, SalesDay } from "../../shared/types";
+import { athensToday, addDays } from "../dates";
+import type { ReconRow, Sale, SalesDay } from "../../shared/types";
 
 export const sales = new Hono<AppContext>();
 
@@ -159,6 +159,79 @@ sales.get("/", async (c) => {
     },
   };
   return c.json(day);
+});
+
+// ---------- Z ↔ POS reconciliation ----------
+// Compares the register's confirmed Z-reports against POS-recorded sales per day.
+// Same ±0.05 € tolerance as the extraction cross-checks.
+
+const RECON_TOLERANCE = 0.05;
+
+sales.get("/reconciliation", async (c) => {
+  const db = c.env.DB;
+  const single = c.req.query("date");
+  let start: string;
+  let end: string;
+  if (single && /^\d{4}-\d{2}-\d{2}$/.test(single)) {
+    start = end = single;
+  } else {
+    const days = Math.min(60, Math.max(1, Number(c.req.query("days") ?? 14) || 14));
+    end = athensToday();
+    start = addDays(end, -(days - 1));
+  }
+
+  const [zRows, posRows] = await Promise.all([
+    db.prepare(
+      `SELECT business_date AS d, SUM(gross_total) AS gross,
+              SUM(COALESCE(cash_total, 0)) AS cash, SUM(COALESCE(card_total, 0)) AS card
+       FROM z_reports
+       WHERE status = 'confirmed' AND deleted_at IS NULL AND business_date BETWEEN ? AND ?
+       GROUP BY business_date`,
+    ).bind(start, end).all<{ d: string; gross: number; cash: number; card: number }>(),
+    db.prepare(
+      `SELECT business_date AS d,
+              SUM(CASE WHEN type = 'sale' THEN total ELSE -total END) AS total,
+              SUM(CASE WHEN payment_method = 'cash' THEN (CASE WHEN type = 'sale' THEN total ELSE -total END) ELSE 0 END) AS cash,
+              SUM(CASE WHEN payment_method = 'card' THEN (CASE WHEN type = 'sale' THEN total ELSE -total END) ELSE 0 END) AS card,
+              COUNT(*) AS tx
+       FROM sales
+       WHERE voided_at IS NULL AND business_date BETWEEN ? AND ?
+       GROUP BY business_date`,
+    ).bind(start, end).all<{ d: string; total: number; cash: number; card: number; tx: number }>(),
+  ]);
+
+  const zBy = new Map(zRows.results.map((r) => [r.d, r]));
+  const posBy = new Map(posRows.results.map((r) => [r.d, r]));
+  const dates = [...new Set([...zBy.keys(), ...posBy.keys()])].sort().reverse();
+
+  const rows: ReconRow[] = dates.map((d) => {
+    const zr = zBy.get(d) ?? null;
+    const pr = posBy.get(d) ?? null;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    let status: ReconRow["status"];
+    let diff: number | null = null;
+    if (zr && pr) {
+      diff = r2(pr.total - zr.gross);
+      status = Math.abs(diff) <= RECON_TOLERANCE ? "match" : "mismatch";
+    } else if (zr) {
+      status = "no_pos";
+    } else {
+      status = "no_z";
+    }
+    return {
+      date: d,
+      z_gross: zr ? r2(zr.gross) : null,
+      z_cash: zr ? r2(zr.cash) : null,
+      z_card: zr ? r2(zr.card) : null,
+      pos_total: pr ? r2(pr.total) : null,
+      pos_cash: pr ? r2(pr.cash) : null,
+      pos_card: pr ? r2(pr.card) : null,
+      pos_tx: pr ? pr.tx : 0,
+      diff,
+      status,
+    };
+  });
+  return c.json({ rows });
 });
 
 sales.get("/:id", async (c) => {

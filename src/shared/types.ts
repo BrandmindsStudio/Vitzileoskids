@@ -138,6 +138,20 @@ export interface SalesDay {
   totals: { count: number; total: number; cash: number; card: number; returns_total: number };
 }
 
+/** Daily Z-report ↔ POS comparison row. */
+export interface ReconRow {
+  date: string;
+  z_gross: number | null;
+  z_cash: number | null;
+  z_card: number | null;
+  pos_total: number | null;
+  pos_cash: number | null;
+  pos_card: number | null;
+  pos_tx: number;
+  diff: number | null; // pos_total − z_gross when both exist
+  status: "match" | "mismatch" | "no_z" | "no_pos";
+}
+
 /** One product parsed from the e-shop XML feed (client-side) for bulk import. */
 export interface ImportProduct {
   woo_id: number;
