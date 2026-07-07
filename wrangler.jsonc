@@ -6,6 +6,12 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2025-06-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Custom domains: the zone must exist in the same Cloudflare account.
+  // `wrangler deploy` creates the DNS records + TLS certificates automatically.
+  "routes": [
+    { "pattern": "vitzileospos.com", "custom_domain": true },
+    { "pattern": "www.vitzileospos.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
