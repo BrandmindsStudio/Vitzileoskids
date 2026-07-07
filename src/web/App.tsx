@@ -8,6 +8,10 @@ import Upload from "./pages/Upload";
 import Manual from "./pages/Manual";
 import Reports from "./pages/Reports";
 import ReportDetail from "./pages/ReportDetail";
+import Pos from "./pages/Pos";
+import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
+import ProductNew from "./pages/ProductNew";
 
 interface User {
   id: number;
@@ -61,6 +65,10 @@ export default function App() {
           <Route path="/manual" element={<Manual />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/reports/:id" element={<ReportDetail />} />
+          <Route path="/pos" element={<Pos />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/new" element={<ProductNew />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

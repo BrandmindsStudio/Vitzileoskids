@@ -64,6 +64,102 @@ export interface ExtractionResult {
   warnings: string[];
 }
 
+// ---------- Phase 2: inventory + POS ----------
+
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  woo_variation_id: number | null;
+  ean: string | null;
+  size: string | null;
+  color: string | null;
+  price: number;
+  stock: number;
+}
+
+export interface Product {
+  id: number;
+  woo_id: number | null;
+  mpn: string | null;
+  name: string;
+  category: string | null;
+  manufacturer: string | null;
+  color: string | null;
+  image_url: string | null;
+  vat_rate: number;
+  total_stock: number;
+  variant_count: number;
+  min_price: number | null;
+  max_price: number | null;
+}
+
+export interface ProductDetail extends Omit<Product, "total_stock" | "variant_count" | "min_price" | "max_price"> {
+  link: string | null;
+  description: string | null;
+  variants: ProductVariant[];
+}
+
+/** POS barcode lookup result: the matched variant with its product context. */
+export interface LookupResult {
+  variant: ProductVariant;
+  product: { id: number; name: string; mpn: string | null; manufacturer: string | null; image_url: string | null; vat_rate: number };
+}
+
+export type SaleType = "sale" | "return";
+export type PaymentMethod = "cash" | "card";
+
+export interface SaleLine {
+  id: number;
+  variant_id: number | null;
+  product_name: string;
+  variant_label: string | null;
+  unit_price: number;
+  quantity: number;
+  line_total: number;
+}
+
+export interface Sale {
+  id: number;
+  type: SaleType;
+  business_date: string;
+  channel: "local" | "eshop";
+  payment_method: PaymentMethod;
+  total: number;
+  notes: string | null;
+  fiscal_status: "none" | "pending" | "issued" | "failed";
+  voided_at: string | null;
+  created_at: string;
+  lines: SaleLine[];
+}
+
+export interface SalesDay {
+  date: string;
+  sales: Sale[];
+  totals: { count: number; total: number; cash: number; card: number; returns_total: number };
+}
+
+/** One product parsed from the e-shop XML feed (client-side) for bulk import. */
+export interface ImportProduct {
+  woo_id: number;
+  mpn: string | null;
+  name: string;
+  category: string | null;
+  manufacturer: string | null;
+  color: string | null;
+  image_url: string | null;
+  link: string | null;
+  description: string | null;
+  vat_rate: number;
+  variants: {
+    woo_variation_id: number | null;
+    ean: string | null;
+    size: string | null;
+    color: string | null;
+    price: number;
+    stock: number;
+  }[];
+}
+
 export interface DashboardData {
   today: { total: number; count: number };
   week: { total: number; count: number };

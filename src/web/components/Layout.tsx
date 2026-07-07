@@ -5,8 +5,9 @@ import { useAuth } from "../App";
 
 const tabs = [
   { to: "/", label: "Αρχική", icon: "📊" },
-  { to: "/upload", label: "Φωτογραφία Ζ", icon: "📷" },
-  { to: "/manual", label: "Χειροκίνητα", icon: "✍️" },
+  { to: "/pos", label: "Ταμείο", icon: "🛒" },
+  { to: "/products", label: "Προϊόντα", icon: "👕" },
+  { to: "/upload", label: "Φωτο Ζ", icon: "📷" },
   { to: "/reports", label: "Αναφορές", icon: "📁" },
 ];
 
