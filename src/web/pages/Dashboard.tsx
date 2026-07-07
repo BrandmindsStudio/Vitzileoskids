@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import type { DashboardData } from "../../shared/types";
+import type { DashboardData, ReconRow } from "../../shared/types";
 import { fmtEur, fmtDate, fmtMonth, fmtNum } from "../format";
 import DailyBarChart from "../components/DailyBarChart";
 import CashCardSplit from "../components/CashCardSplit";
@@ -9,11 +9,13 @@ import DeptBars from "../components/DeptBars";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [recon, setRecon] = useState<ReconRow[]>([]);
   const [error, setError] = useState(false);
   const [days, setDays] = useState<30 | 90>(30);
 
   useEffect(() => {
     api.get<DashboardData>("/api/dashboard").then(setData).catch(() => setError(true));
+    api.get<{ rows: ReconRow[] }>("/api/sales/reconciliation?days=14").then((r) => setRecon(r.rows)).catch(() => {});
   }, []);
 
   if (error) return <p className="py-8 text-center text-sm text-[var(--delta-down)]">Σφάλμα φόρτωσης.</p>;
@@ -76,6 +78,28 @@ export default function Dashboard() {
       >
         <DailyBarChart data={data.daily} days={days} />
       </Card>
+
+      {recon.length > 0 && (
+        <Card title="Ζ ↔ Ταμείο εφαρμογής (14 ημέρες)">
+          <ul className="space-y-1.5 text-sm">
+            {recon.map((r) => (
+              <li key={r.date} className="flex items-center justify-between gap-2 border-t border-[var(--grid)] pt-1.5 first:border-t-0 first:pt-0">
+                <Link to="/sales" className="min-w-0 truncate">{fmtDate(r.date)}</Link>
+                <span className="shrink-0 tabular-nums">
+                  {r.status === "match" && <span className="font-semibold" style={{ color: "var(--delta-up)" }}>✓ {fmtEur(r.z_gross)}</span>}
+                  {r.status === "mismatch" && (
+                    <span className="font-semibold text-[var(--delta-down)]">
+                      ✗ διαφορά {fmtEur(Math.abs(r.diff!))}
+                    </span>
+                  )}
+                  {r.status === "no_z" && <span className="text-[var(--ink-muted)]">χωρίς «Ζ» · ταμείο {fmtEur(r.pos_total)}</span>}
+                  {r.status === "no_pos" && <span className="text-[var(--ink-muted)]">χωρίς κινήσεις ταμείου</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title={`Μετρητά / Κάρτα — ${fmtMonth(data.vat_month)}`}>
         <CashCardSplit cash={data.cash_card.cash} card={data.cash_card.card} />

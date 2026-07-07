@@ -11,7 +11,8 @@ export default function Upload() {
   const [photos, setPhotos] = useState<{ file: Blob; url: string }[]>([]);
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const addFiles = async (list: FileList | null) => {
@@ -29,7 +30,8 @@ export default function Upload() {
     } catch {
       setError("Αποτυχία επεξεργασίας φωτογραφίας. Δοκιμάστε ξανά.");
     }
-    if (inputRef.current) inputRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
   };
 
   const move = (i: number, dir: -1 | 1) => {
@@ -79,11 +81,20 @@ export default function Upload() {
         κάτω, ώστε να φαίνεται όλο το δελτίο.
       </p>
 
+      {/* capture forces the camera app; the second input (no capture) opens the photo picker */}
       <input
-        ref={inputRef}
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
+        hidden
+        onChange={(e) => addFiles(e.target.files)}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
         multiple
         hidden
         onChange={(e) => addFiles(e.target.files)}
@@ -108,17 +119,26 @@ export default function Upload() {
       )}
 
       {photos.length < MAX_PHOTOS && (
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className="w-full rounded-2xl border-2 border-dashed border-black/20 bg-[var(--surface-1)] py-8 text-center text-[var(--ink-2)] disabled:opacity-50"
-        >
-          <span className="block text-3xl">📷</span>
-          <span className="mt-1 block font-semibold">
-            {photos.length === 0 ? "Λήψη / επιλογή φωτογραφιών" : "Προσθήκη φωτογραφίας"}
-          </span>
-          <span className="mt-0.5 block text-xs">{photos.length}/{MAX_PHOTOS}</span>
-        </button>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => cameraRef.current?.click()}
+            disabled={busy}
+            className="rounded-2xl border-2 border-dashed border-black/20 bg-[var(--surface-1)] py-6 text-center text-[var(--ink-2)] disabled:opacity-50"
+          >
+            <span className="block text-3xl">📷</span>
+            <span className="mt-1 block font-semibold">Λήψη φωτογραφίας</span>
+            <span className="mt-0.5 block text-xs">{photos.length}/{MAX_PHOTOS}</span>
+          </button>
+          <button
+            onClick={() => galleryRef.current?.click()}
+            disabled={busy}
+            className="rounded-2xl border-2 border-dashed border-black/20 bg-[var(--surface-1)] py-6 text-center text-[var(--ink-2)] disabled:opacity-50"
+          >
+            <span className="block text-3xl">🖼️</span>
+            <span className="mt-1 block font-semibold">Επιλογή από συλλογή</span>
+            <span className="mt-0.5 block text-xs">{photos.length}/{MAX_PHOTOS}</span>
+          </button>
+        </div>
       )}
 
       {error && <p className="text-sm text-[var(--delta-down)]">{error}</p>}

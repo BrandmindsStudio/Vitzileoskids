@@ -7,6 +7,8 @@ import { dashboard } from "./routes/dashboard";
 import { photos } from "./routes/photos";
 import { exportCsv } from "./routes/export";
 import { settings } from "./routes/settings";
+import { products } from "./routes/products";
+import { sales } from "./routes/sales";
 
 const app = new Hono<AppContext>();
 
@@ -23,6 +25,8 @@ app.route("/api/dashboard", dashboard);
 app.route("/api/photos", photos);
 app.route("/api/export", exportCsv);
 app.route("/api/settings", settings);
+app.route("/api/products", products);
+app.route("/api/sales", sales);
 
 app.notFound((c) => {
   if (new URL(c.req.url).pathname.startsWith("/api/")) {
