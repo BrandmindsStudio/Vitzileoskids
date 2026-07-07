@@ -22,17 +22,16 @@ export default function ProductDetail() {
     <div className="space-y-4">
       <button onClick={() => navigate(-1)} className="text-sm text-[var(--series-1)]">← Πίσω</button>
 
-      <div className="flex gap-3">
-        {p.image_url && <img src={p.image_url} alt="" className="h-24 w-24 rounded-xl object-cover" />}
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold leading-snug">{p.name}</h2>
-          <p className="text-sm text-[var(--ink-muted)]">
-            {[p.manufacturer, p.mpn, p.category].filter(Boolean).join(" · ")}
-          </p>
-          {p.color && <p className="text-sm text-[var(--ink-2)]">Χρώμα: {p.color}</p>}
-          <p className="text-xs text-[var(--ink-muted)]">ΦΠΑ {p.vat_rate}%{p.woo_id ? ` · e-shop #${p.woo_id}` : " · μόνο τοπικό"}</p>
-        </div>
+      <div>
+        <h2 className="text-lg font-bold leading-snug">{p.name}</h2>
+        <p className="text-sm text-[var(--ink-muted)]">
+          {[p.manufacturer, p.mpn, p.category].filter(Boolean).join(" · ")}
+        </p>
+        {p.color && <p className="text-sm text-[var(--ink-2)]">Χρώμα: {p.color}</p>}
+        <p className="text-xs text-[var(--ink-muted)]">ΦΠΑ {p.vat_rate}%{p.woo_id ? ` · e-shop #${p.woo_id}` : " · μόνο τοπικό"}</p>
       </div>
+
+      <Gallery images={p.images.length > 0 ? p.images : p.image_url ? [p.image_url] : []} />
 
       <h3 className="font-semibold">Μεγέθη / παραλλαγές</h3>
       <ul className="space-y-2">
@@ -42,6 +41,40 @@ export default function ProductDetail() {
       </ul>
       {p.description && <p className="text-sm text-[var(--ink-2)]">{p.description}</p>}
     </div>
+  );
+}
+
+/** Horizontal swipe gallery with a tap-to-enlarge overlay. */
+function Gallery({ images }: { images: string[] }) {
+  const [open, setOpen] = useState<string | null>(null);
+  if (images.length === 0) return null;
+  return (
+    <>
+      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
+        {images.map((url, i) => (
+          <button key={url} onClick={() => setOpen(url)} className="shrink-0 snap-start">
+            <img
+              src={url}
+              alt={`Φωτογραφία ${i + 1}`}
+              loading={i === 0 ? "eager" : "lazy"}
+              className="h-56 w-44 rounded-xl object-cover ring-1 ring-black/10"
+            />
+          </button>
+        ))}
+      </div>
+      {images.length > 1 && (
+        <p className="-mt-2 text-center text-[11px] text-[var(--ink-muted)]">{images.length} φωτογραφίες — σύρετε δεξιά</p>
+      )}
+      {open && (
+        <button
+          onClick={() => setOpen(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3"
+          aria-label="Κλείσιμο"
+        >
+          <img src={open} alt="" className="max-h-full max-w-full rounded-xl object-contain" />
+        </button>
+      )}
+    </>
   );
 }
 

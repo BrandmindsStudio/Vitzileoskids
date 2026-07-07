@@ -97,6 +97,21 @@ export interface ProductDetail extends Omit<Product, "total_stock" | "variant_co
   link: string | null;
   description: string | null;
   variants: ProductVariant[];
+  images: string[];
+}
+
+/** Feed sync panel data. */
+export interface FeedStatus {
+  feed_url: string | null;
+  last_import: {
+    created_at: string; // UTC "YYYY-MM-DD HH:MM:SS"
+    source: "file" | "url";
+    filename: string | null;
+    feed_created_at: string | null;
+    products_upserted: number;
+    variants_upserted: number;
+  } | null;
+  totals: { products: number; variants: number; with_ean: number };
 }
 
 /** POS barcode lookup result: the matched variant with its product context. */
@@ -161,6 +176,7 @@ export interface ImportProduct {
   manufacturer: string | null;
   color: string | null;
   image_url: string | null;
+  images: string[];
   link: string | null;
   description: string | null;
   vat_rate: number;

@@ -24,6 +24,7 @@ const ImportProductSchema = z.object({
   manufacturer: z.string().max(200).nullable(),
   color: z.string().max(120).nullable(),
   image_url: z.string().max(1000).nullable(),
+  images: z.array(z.string().max(1000)).max(12).default([]),
   link: z.string().max(1000).nullable(),
   description: z.string().max(4000).nullable(),
   vat_rate: z.number().finite().min(0).max(50),
@@ -34,6 +35,8 @@ const ImportBatchSchema = z.object({
   update_stock: z.boolean(),
   import_id: z.number().int().nullable(), // first batch: null → server creates the audit row
   filename: z.string().max(300).nullable(),
+  source: z.enum(["file", "url"]).default("file"),
+  feed_created_at: z.string().max(40).nullable().default(null),
   products: z.array(ImportProductSchema).min(1).max(60),
 });
 
@@ -66,15 +69,15 @@ function isUniqueError(e: unknown): boolean {
 products.post("/import", async (c) => {
   const parsed = ImportBatchSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: "invalid_input", details: parsed.error.flatten() }, 400);
-  const { update_stock, products: items, filename } = parsed.data;
+  const { update_stock, products: items, filename, source, feed_created_at } = parsed.data;
   let importId = parsed.data.import_id;
   const db = c.env.DB;
   const user = c.get("user");
 
   if (importId == null) {
     const row = await db
-      .prepare("INSERT INTO product_imports (filename, update_stock, created_by) VALUES (?,?,?) RETURNING id")
-      .bind(filename, update_stock ? 1 : 0, user.id)
+      .prepare("INSERT INTO product_imports (filename, update_stock, source, feed_created_at, created_by) VALUES (?,?,?,?,?) RETURNING id")
+      .bind(filename, update_stock ? 1 : 0, source, feed_created_at, user.id)
       .first<{ id: number }>();
     importId = row!.id;
   }
@@ -101,11 +104,18 @@ products.post("/import", async (c) => {
 
   // Phase 2: upsert variants by woo_variation_id. A locally-taught EAN is never
   // overwritten by a NULL from the feed; stock only moves when update_stock is on.
+  // Image galleries are replaced wholesale from the feed.
   const stockClause = update_stock ? "stock=excluded.stock," : "";
   const variantStmts: D1PreparedStatement[] = [];
   let variantCount = 0;
   items.forEach((p, i) => {
     const productId = productResults[i].results[0].id;
+    variantStmts.push(db.prepare("DELETE FROM product_images WHERE product_id = ?").bind(productId));
+    p.images.forEach((url, j) => {
+      variantStmts.push(
+        db.prepare("INSERT INTO product_images (product_id, url, order_index) VALUES (?,?,?)").bind(productId, url, j),
+      );
+    });
     for (const v of p.variants) {
       variantCount++;
       variantStmts.push(
@@ -266,6 +276,60 @@ products.post("/", async (c) => {
   return c.json({ id: productId }, 201);
 });
 
+// ---------- feed sync: status, configured URL, and a CORS-free proxy ----------
+
+products.get("/feed-status", async (c) => {
+  const db = c.env.DB;
+  const [urlRow, lastImport, totals] = await Promise.all([
+    db.prepare("SELECT value FROM settings WHERE key = 'feed_url'").first<{ value: string }>(),
+    db.prepare(
+      "SELECT created_at, source, filename, feed_created_at, products_upserted, variants_upserted FROM product_imports ORDER BY id DESC LIMIT 1",
+    ).first<Record<string, unknown>>(),
+    db.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM products WHERE deleted_at IS NULL) AS products,
+         (SELECT COUNT(*) FROM product_variants WHERE deleted_at IS NULL) AS variants,
+         (SELECT COUNT(*) FROM product_variants WHERE deleted_at IS NULL AND ean IS NOT NULL) AS with_ean`,
+    ).first<{ products: number; variants: number; with_ean: number }>(),
+  ]);
+  return c.json({
+    feed_url: urlRow?.value || null,
+    last_import: lastImport ?? null,
+    totals: totals ?? { products: 0, variants: 0, with_ean: 0 },
+  });
+});
+
+products.put("/feed-url", async (c) => {
+  const body = z.object({ url: z.string().max(1000) }).safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "invalid_input" }, 400);
+  const url = body.data.url.trim();
+  if (url && !/^https:\/\//.test(url)) return c.json({ error: "https_required" }, 400);
+  await c.env.DB
+    .prepare("INSERT INTO settings (key, value) VALUES ('feed_url', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .bind(url)
+    .run();
+  return c.json({ ok: true });
+});
+
+// The SPA can't fetch the e-shop feed directly (CORS), so the Worker relays it.
+products.get("/feed-proxy", async (c) => {
+  const urlRow = await c.env.DB.prepare("SELECT value FROM settings WHERE key = 'feed_url'").first<{ value: string }>();
+  if (!urlRow?.value) return c.json({ error: "no_feed_url" }, 400);
+  try {
+    const upstream = await fetch(urlRow.value, {
+      headers: { "User-Agent": "VitzileosPOS/1.0 (+https://vitzileospos.com)", Accept: "application/xml,text/xml,*/*" },
+    });
+    if (!upstream.ok) {
+      console.error("feed_fetch_failed", upstream.status);
+      return c.json({ error: "feed_fetch_failed", status: upstream.status }, 502);
+    }
+    return new Response(upstream.body, { headers: { "Content-Type": "text/xml; charset=utf-8" } });
+  } catch (e) {
+    console.error("feed_fetch_error", e instanceof Error ? e.message : e);
+    return c.json({ error: "feed_unreachable" }, 502);
+  }
+});
+
 // ---------- list / filters / detail ----------
 
 products.get("/meta", async (c) => {
@@ -324,13 +388,17 @@ products.get("/:id", async (c) => {
     .bind(id)
     .first<Record<string, unknown>>();
   if (!product) return c.json({ error: "not_found" }, 404);
-  const variants = await c.env.DB
-    .prepare(
+  const [variants, images] = await Promise.all([
+    c.env.DB.prepare(
       "SELECT id, product_id, woo_variation_id, ean, size, color, price, stock FROM product_variants WHERE product_id = ? AND deleted_at IS NULL ORDER BY size, id",
-    )
-    .bind(id)
-    .all();
-  return c.json({ ...product, variants: variants.results } as unknown as ProductDetail);
+    ).bind(id).all(),
+    c.env.DB.prepare("SELECT url FROM product_images WHERE product_id = ? ORDER BY order_index").bind(id).all<{ url: string }>(),
+  ]);
+  return c.json({
+    ...product,
+    variants: variants.results,
+    images: images.results.map((r) => r.url),
+  } as unknown as ProductDetail);
 });
 
 products.delete("/:id", async (c) => {

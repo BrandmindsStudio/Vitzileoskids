@@ -14,7 +14,13 @@ function num(el: Element, tag: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function parseFeedXml(xml: string): ImportProduct[] {
+export interface ParsedFeed {
+  /** The feed's own <created_at> timestamp, if present. */
+  created_at: string | null;
+  products: ImportProduct[];
+}
+
+export function parseFeedXml(xml: string): ParsedFeed {
   const doc = new DOMParser().parseFromString(xml, "text/xml");
   if (doc.querySelector("parsererror")) throw new Error("invalid_xml");
 
@@ -26,6 +32,14 @@ export function parseFeedXml(xml: string): ImportProduct[] {
     const name = text(p, "name");
     if (wooId == null || !name) continue;
 
+    const mainImage = text(p, "image");
+    const images: string[] = [];
+    if (mainImage) images.push(mainImage);
+    for (const extra of p.querySelectorAll(":scope > additional_imageurl")) {
+      const url = extra.textContent?.trim();
+      if (url && !images.includes(url)) images.push(url);
+    }
+
     const base = {
       woo_id: wooId,
       mpn: text(p, "mpn"),
@@ -33,7 +47,8 @@ export function parseFeedXml(xml: string): ImportProduct[] {
       category: text(p, "category"),
       manufacturer: text(p, "manufacturer"),
       color: text(p, "color"),
-      image_url: text(p, "image"),
+      image_url: mainImage,
+      images: images.slice(0, 12),
       link: text(p, "link"),
       description: text(p, "description"),
       vat_rate: num(p, "vat") ?? 24,
@@ -69,5 +84,6 @@ export function parseFeedXml(xml: string): ImportProduct[] {
     }
     out.push({ ...base, variants });
   }
-  return out;
+  const createdAt = doc.querySelector("mywebstore > created_at")?.textContent?.trim() || null;
+  return { created_at: createdAt, products: out };
 }
